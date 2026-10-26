@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121214">
+<title>Face-Off — Build Your Fighter</title>
+<style>
+:root{
+  --bg:#121214; --panel:#1c1c20; --panel2:#232328; --text:#eee; --muted:#9a9aa2;
+  --char:#5a8cff; --attr:#ff6b5a; --accent:#ffb84d;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; min-height:100%;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  display:flex; justify-content:center;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+.wrap{width:100%; max-width:480px; padding:16px 16px 40px;}
+h1{font-size:1.4rem; text-align:center; margin:4px 0 0;}
+.sub{text-align:center; color:var(--muted); font-size:0.82rem; margin-bottom:6px;}
+.deck-count{text-align:center; color:#55555c; font-size:0.7rem; margin-bottom:14px;}
+.panel{background:var(--panel); border:1px solid #2a2a30; border-radius:14px; padding:14px; margin-bottom:14px;}
+.sec-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+.sec-title{font-size:0.8rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;}
+.sec-title.char{color:var(--char);} .sec-title.attr{color:var(--attr);}
+.sec-hint{font-size:0.72rem; color:var(--muted);}
+.cards{display:flex; flex-direction:column; gap:8px;}
+.card{
+  background:var(--panel2); border:2px solid #333; border-radius:10px; padding:13px 14px;
+  font-size:1rem; line-height:1.3; user-select:none; cursor:pointer; position:relative;
+  transition:transform .08s, border-color .1s;
+}
+.card:active{transform:scale(0.985);}
+.card.char{border-left:4px solid var(--char);}
+.card.attr{border-left:4px solid var(--attr);}
+.card.selected.char{border-color:var(--char); background:#18213a;}
+.card.selected.attr{border-color:var(--attr); background:#3a1e1a;}
+.card .badge{
+  position:absolute; top:-8px; right:10px; background:var(--accent); color:#111;
+  font-size:0.7rem; font-weight:800; border-radius:10px; padding:1px 8px;
+}
+.card.custom input{
+  width:100%; background:transparent; border:none; border-bottom:1px dashed #555;
+  color:var(--text); font-size:1rem; padding:2px 0; outline:none; font-family:inherit;
+}
+.btn{
+  background:#ff5a5f; color:#fff; border:none; border-radius:10px; padding:13px 16px;
+  font-size:1rem; font-weight:600; width:100%; cursor:pointer;
+}
+.btn.secondary{background:var(--panel2); color:var(--text); border:1px solid #333;}
+.btn:disabled{opacity:0.35;}
+.row{display:flex; gap:8px; margin-top:8px;}
+.row .btn{flex:1;}
+.status{text-align:center; color:var(--muted); font-size:0.8rem; margin:2px 0 8px;}
+.note{color:var(--muted); font-size:0.78rem; text-align:center; margin-top:10px;}
+
+/* Fullscreen fighter display */
+.overlay{
+  position:fixed; inset:0; background:var(--bg); z-index:50;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:24px; text-align:center; gap:18px;
+}
+.overlay.hidden{display:none;}
+.fighter{display:flex; flex-direction:column; gap:14px; width:100%; max-width:440px;}
+.f-char{font-size:2.2rem; font-weight:800; color:#b9ceff; line-height:1.15;}
+.f-with{font-size:0.75rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase;}
+.f-attr{font-size:1.35rem; font-weight:700; color:#ffb5aa; line-height:1.25;}
+.close{
+  position:absolute; top:calc(16px + env(safe-area-inset-top,0px)); right:16px;
+  background:var(--panel2); border:1px solid #333; color:var(--text);
+  width:44px; height:44px; border-radius:50%; font-size:1.2rem; cursor:pointer;
+}
+.edit-btn{background:none; border:none; color:var(--muted); font-size:0.75rem; opacity:0.5; text-decoration:underline; padding:8px; cursor:pointer;}
+.overlay textarea{
+  width:100%; max-width:440px; background:var(--panel2); color:var(--text); border:1px solid #333;
+  border-radius:10px; padding:14px; font-size:1.2rem; font-weight:700; text-align:center;
+  font-family:inherit; resize:none;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🥊 FACE-OFF</h1>
+  <div class="sub">Build your fighter. Argue why you'd win.</div>
+  <div class="deck-count" id="deckCount"></div>
+
+  <div class="panel">
+    <div class="sec-head">
+      <span class="sec-title char">Characters</span>
+      <span class="sec-hint">pick 1</span>
+    </div>
+    <div class="cards" id="charHand"></div>
+  </div>
+
+  <div class="panel">
+    <div class="sec-head">
+      <span class="sec-title attr">Attributes</span>
+      <span class="sec-hint">pick 2</span>
+    </div>
+    <div class="cards" id="attrHand"></div>
+  </div>
+
+  <div class="status" id="status"></div>
+  <button class="btn" id="showBtn" onclick="showFighter()">Reveal My Fighter</button>
+  <div class="row">
+    <button class="btn secondary" id="swapBtn" onclick="swapSelected()">Swap Selected</button>
+    <button class="btn secondary" onclick="newHand()">New Hand</button>
+  </div>
+  <div class="note" id="swapNote"></div>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <button class="close" onclick="closeFighter()">✕</button>
+  <div id="fighterBox"></div>
+  <button class="edit-btn" id="editBtn" onclick="startEdit()">edit</button>
+</div>
+
+<script>
+const CHARACTERS = [
+  "A sumo wrestler","A retired pirate","A medieval knight","Your gym teacher","A ninja turtle's cousin",
+  "A grumpy wizard","A professional chess champion","A pack of wolves","A vampire accountant","A sentient robot vacuum",
+  "A dinosaur with a briefcase","A jazz-playing octopus","A haunted doll","An Olympic gymnast","A caffeinated squirrel",
+  "A cowboy astronaut","Your landlord","A kung fu grandma","A mad scientist","A Viking chef",
+  "A disgruntled mascot","A mime","A giant panda","A golden retriever puppy","A very tall toddler",
+  "A time-traveling barista","A cyborg lumberjack","A roller derby queen","A swamp monster","A drill sergeant",
+  "A soap-opera villain","A stand-up comedian","A zombie mailman","A lifeguard","A medieval peasant",
+  "A tiny dragon","A rockstar in his 60s","A giant hamster","A street magician","A mountain gorilla",
+  "A talking parrot","A librarian with a sword","A circus strongman","A bounty hunter","A sleep-deprived new parent",
+  "A court-appointed lawyer","A surfer from the 70s","A cheerleading squad","A gladiator","A very angry goose",
+  "A garden gnome army","A samurai","A sasquatch","A cat burglar","A professional wrestler",
+  "A ghost with unfinished business","A pizza delivery driver","A sentient cactus","A yeti on vacation","A reality-TV chef"
+];
+
+const ATTRIBUTES = [
+  "Can only communicate by yodeling","Has laser eyes","Is always on fire","Is made entirely of cheese","Can shrink to the size of an ant",
+  "Has a rocket-powered wheelchair","Is wearing roller skates","Can teleport but only backwards","Has unlimited free pizza",
+  "Fights using only compliments","Has an army of pigeons","Is 40 feet tall","Is allergic to everything","Can talk to animals but they hate you",
+  "Has no bones","Is invisible but very loud","Wields a sword made of spaghetti","Regenerates every time they sneeze","Is blindfolded",
+  "Has a pet dragon","Is riding a bull","Can fly, but only 3 feet off the ground","Is wearing a suit of armor made of bubble wrap",
+  "Gets stronger the more embarrassed they are","Can control the weather but only drizzle","Has a lightsaber with a very short blade",
+  "Has super speed but can only turn left","Is incredibly good at karaoke","Can stop time but only for 2 seconds","Has a clone who disagrees with everything",
+  "Is covered in itching powder","Throws exploding tacos","Must narrate everything they do","Has a force field that only blocks small objects",
+  "Is really really ticklish","Has a flamethrower for a nose","Can summon any Wi-Fi password","Leaves a trail of glitter everywhere",
+  "Is the world's best hugger","Has telekinesis but only over spoons","Is permanently stuck in a bounce house","Fights from inside a giant hamster ball",
+  "Has eyes in the back of their head","Is carrying a very full cup of coffee that cannot spill","Can only speak in rhymes","Is immune to anything beginning with 'S'",
+  "Has a cape that is far too long","Is constantly followed by a marching band","Can turn anything into a sandwich","Has a suspiciously strong moral compass",
+  "Moves in slow motion but hits like a truck","Has a personal storm cloud","Is sponsored by an energy drink","Fights using only interpretive dance",
+  "Is wearing mismatched socks of power","Can duplicate any object but only once","Has a suit of armor that squeaks","Is fluent in 100 languages but says nothing",
+  "Is magnetic","Has a backpack of infinite snacks","Can hold their breath for 12 hours","Is accompanied by a very loud laugh track",
+  "Leaves everything they touch slightly sticky","Has a loyal sidekick who's terrible","Wears an invisibility cloak that only covers the head","Is currently on a 30-minute timer",
+  "Can't be hurt by anything that's red","Has a megaphone for a voice","Is wearing a jetpack with 10 seconds of fuel","Has the power of a thousand suns, but only on Tuesdays"
+];
+
+const CUSTOM_PER_TYPE = 5;
+const HAND_CHAR = 3, HAND_ATTR = 3;
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function buildDeck(texts, type){
+  const d = texts.map(t=>({text:t, type}));
+  for(let i=0;i<CUSTOM_PER_TYPE;i++) d.push({text:'', type, custom:true});
+  return shuffle(d);
+}
+
+let charDeck=[], attrDeck=[], charHand=[], attrHand=[];
+let selChar=[], selAttr=[]; // indices
+let swapUsed=false;
+let words=null; // {char, attrs[]} or custom text
+
+function drawChar(){ if(!charDeck.length) charDeck=buildDeck(CHARACTERS,'char'); return charDeck.pop(); }
+function drawAttr(){ if(!attrDeck.length) attrDeck=buildDeck(ATTRIBUTES,'attr'); return attrDeck.pop(); }
+
+function newHand(){
+  charHand=[]; attrHand=[];
+  for(let i=0;i<HAND_CHAR;i++) charHand.push(drawChar());
+  for(let i=0;i<HAND_ATTR;i++) attrHand.push(drawAttr());
+  selChar=[]; selAttr=[]; swapUsed=false;
+  render();
+}
+
+function toggle(list, idx, max){
+  const p=list.indexOf(idx);
+  if(p>-1) list.splice(p,1);
+  else if(list.length<max) list.push(idx);
+  else { list.shift(); list.push(idx); } // replace oldest
+}
+
+function renderGroup(elId, hand, sel, max, type){
+  const box=document.getElementById(elId);
+  box.innerHTML='';
+  hand.forEach((card,idx)=>{
+    const el=document.createElement('div');
+    const pos=sel.indexOf(idx);
+    el.className='card '+type+(card.custom?' custom':'')+(pos>-1?' selected':'');
+    if(card.custom){
+      const inp=document.createElement('input');
+      inp.type='text'; inp.placeholder='Write your own...'; inp.value=card.text;
+      inp.oninput=()=>{card.text=inp.value; updateButtons();};
+      inp.onclick=e=>e.stopPropagation();
+      el.appendChild(inp);
+    } else {
+      el.textContent=card.text;
+    }
+    if(pos>-1 && max>1){
+      const b=document.createElement('span'); b.className='badge'; b.textContent=pos+1; el.appendChild(b);
+    }
+    el.onclick=()=>{ toggle(sel, idx, max); render(); };
+    box.appendChild(el);
+  });
+}
+
+function render(){
+  renderGroup('charHand', charHand, selChar, 1, 'char');
+  renderGroup('attrHand', attrHand, selAttr, 2, 'attr');
+  updateButtons();
+}
+
+function updateButtons(){
+  const ready = selChar.length===1 && selAttr.length===2 &&
+    [charHand[selChar[0]], ...selAttr.map(i=>attrHand[i])].every(c=>c.text.trim());
+  document.getElementById('showBtn').disabled = !ready;
+  const total = selChar.length+selAttr.length;
+  document.getElementById('swapBtn').disabled = total===0 || swapUsed;
+  document.getElementById('status').textContent =
+    `${selChar.length}/1 character · ${selAttr.length}/2 attributes selected`;
+  document.getElementById('swapNote').textContent = swapUsed
+    ? 'Swap used this hand. Tap New Hand to swap again.'
+    : 'Once per hand you can swap any selected cards for fresh ones.';
+}
+
+function swapSelected(){
+  if(swapUsed) return;
+  if(!selChar.length && !selAttr.length) return;
+  selChar.forEach(i=>{ charHand[i]=drawChar(); });
+  selAttr.forEach(i=>{ attrHand[i]=drawAttr(); });
+  selChar=[]; selAttr=[]; swapUsed=true;
+  render();
+}
+
+/* Fighter display */
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function showFighter(){
+  const c=charHand[selChar[0]].text.trim();
+  const a=selAttr.map(i=>attrHand[i].text.trim());
+  words={char:c, attrs:a, custom:null};
+  renderFighter();
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function renderFighter(){
+  const box=document.getElementById('fighterBox');
+  if(words.custom!==null){
+    box.innerHTML=`<div class="fighter"><div class="f-attr" style="font-size:1.5rem">${esc(words.custom).replace(/\n/g,'<br>')}</div></div>`;
+  } else {
+    box.innerHTML=`<div class="fighter">
+      <div class="f-char">${esc(words.char)}</div>
+      <div class="f-with">who</div>
+      <div class="f-attr">${esc(words.attrs[0])}</div>
+      <div class="f-with">and</div>
+      <div class="f-attr">${esc(words.attrs[1])}</div>
+    </div>`;
+  }
+}
+function startEdit(){
+  const box=document.getElementById('fighterBox');
+  const cur = words.custom!==null ? words.custom
+    : `${words.char}, who ${words.attrs[0]} and ${words.attrs[1]}`;
+  box.innerHTML=`<textarea id="editArea" rows="6">${esc(cur)}</textarea>`;
+  const area=document.getElementById('editArea'); area.focus();
+  const btn=document.getElementById('editBtn');
+  btn.textContent='save';
+  btn.onclick=()=>{
+    words.custom=area.value.trim()||cur;
+    renderFighter();
+    btn.textContent='edit'; btn.onclick=startEdit;
+  };
+}
+function closeFighter(){
+  document.getElementById('overlay').classList.add('hidden');
+  const btn=document.getElementById('editBtn');
+  btn.textContent='edit'; btn.onclick=startEdit;
+}
+
+function renderDeckCount(){
+  const total = CHARACTERS.length+ATTRIBUTES.length+CUSTOM_PER_TYPE*2;
+  document.getElementById('deckCount').textContent =
+    `${total} cards · ${CHARACTERS.length} characters · ${ATTRIBUTES.length} attributes · ${CUSTOM_PER_TYPE*2} blank`;
+}
+
+charDeck=buildDeck(CHARACTERS,'char');
+attrDeck=buildDeck(ATTRIBUTES,'attr');
+renderDeckCount();
+newHand();
+</script>
+</body>
+</html>
